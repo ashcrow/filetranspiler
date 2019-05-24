@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-Takes tranditional network scripts and appends them into a provided
-ignition configuration.
+Takes a fake root and appends them into a provided ignition configuration.
 """
 
 
 import argparse
 import json
 import os
+import stat
 
 from urllib.parse import quote
 
 
-def net_cfg_to_ignition(file_path, file_contents, mode=420):
+def file_to_ignition(file_path, file_contents, mode):
     """
     Turns a network config file into an ignition snippet.
 
@@ -20,37 +20,33 @@ def net_cfg_to_ignition(file_path, file_contents, mode=420):
     :type file_path: str
     :param file_contents: The raw contents of the file
     :type file_contents: str
-    :param mode: Optional DECIMAL mode to use
+    :param mode: Octal mode to use (will translate to decimal)
     :type mode: int
     :returns: Ignition net config snippet
     :rtype: dict
     """
     return {
         'path': file_path,
-        'mode': mode,
+        'mode': int(mode, 8),
         'contents': {
             'source': 'data:,{}'.format(quote(file_contents))
         }
     }
 
 
-def merge_with_ignition(ignition_cfg, net_cfgs):
+def merge_with_ignition(ignition_cfg, files):
     """
-    Merge net configs into the ignition config.
+    Merge file snippets into the ignition config.
 
     :param ignition_cfg: Ignition structure to append to
     :type ignition_cfg: dict
-    :param net_cfgs: List of network configs as dict Ignition snippets
-    :type net_cfgs: list
+    :param files: List of Ignition file snippets
+    :type files: list
     :returns: Merged ignition dict
     :rtype: dict
     """
-    for file_cfg in ignition_cfg['storage']['files']:
-        if file_cfg['path'].startswith('/etc/sysconfig/network-scripts/'):
-            pass
-            # TODO: Do something? Remove generated ones? Leave them alone?
-    for net_cfg in net_cfgs:
-        ignition_cfg['storage']['files'].append(net_cfg)
+    for a_file in files:
+        ignition_cfg['storage']['files'].append(a_file)
     return ignition_cfg
 
 
@@ -63,7 +59,7 @@ def main():
         '-i', '--ignition', help='Path to ignition file to use as the base',
         required=True)
     parser.add_argument(
-        '-n', '--network-dir', help='Path to the directory housing network scripts',
+        '-f', '--fake-root', help='Path to the fake root',
         required=True)
     parser.add_argument(
         '-o', '--output', help='Where to output the file. If empty, will print to stdout.')
@@ -75,21 +71,20 @@ def main():
         # Get the ignition config
         ignition_cfg = json.load(f)
 
-        # TODO: Generate the networkscripts? Anaconda?
-
-        # Parse the network files and append them for merging
-        network_files = []
-        for f in os.listdir(args.network_dir):
-            net_cfg_path = os.path.join(args.network_dir, f)
-            with open(net_cfg_path, 'r') as net_f:
-                net_cfg = net_cfg_to_ignition(
-                    '/etc/sysconfig/network-scripts/{}'.format(f),
-                    net_f.read())
-            network_files.append(net_cfg)
+        # Walk through the files and append them for merging
+        all_files = []
+        for root, dirs, files in os.walk(args.fake_root):
+            for file in files:
+                path = os.path.sep.join([root, file])
+                host_path = os.path.sep + os.path.sep.join(path.split(os.path.sep)[1:])
+                mode = oct(stat.S_IMODE(os.stat(path).st_mode))
+                with open(path, 'r') as file_obj:
+                    snippet = file_to_ignition(host_path, file_obj.read(), mode)
+                all_files.append(snippet)
 
         # Merge the and output the results
         merged_ignition_cfg = json.dumps(
-            merge_with_ignition(ignition_cfg, network_files),
+            merge_with_ignition(ignition_cfg, all_files),
             sort_keys=True, indent=4, separators=(',', ': '))
         if args.output:
             with open(args.output, 'w') as out_f:
