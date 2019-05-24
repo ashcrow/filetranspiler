@@ -3,7 +3,6 @@
 Takes a fake root and appends them into a provided ignition configuration.
 """
 
-
 import argparse
 import json
 import os
@@ -73,10 +72,12 @@ def main():
 
         # Walk through the files and append them for merging
         all_files = []
-        for root, dirs, files in os.walk(args.fake_root):
+        for root, _, files in os.walk(args.fake_root):
             for file in files:
                 path = os.path.sep.join([root, file])
-                host_path = os.path.sep + os.path.sep.join(path.split(os.path.sep)[1:])
+                host_path = path.replace(args.fake_root, '')
+                if not host_path.startswith(os.path.sep):
+                    host_path = os.path.sep + host_path
                 mode = oct(stat.S_IMODE(os.stat(path).st_mode))
                 with open(path, 'r') as file_obj:
                     snippet = file_to_ignition(host_path, file_obj.read(), mode)
