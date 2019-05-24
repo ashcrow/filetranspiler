@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""
+Takes tranditional network scripts and appends them into a provided
+ignition configuration.
+"""
+
+
+import argparse
+import json
+import os
+
+from urllib.parse import quote
+
+
+def net_cfg_to_ignition(file_path, file_contents, mode=420):
+    """
+    Turns a network config file into an ignition snippet.
+
+    :param file_path: Path to where the file should be placed.
+    :type file_path: str
+    :param file_contents: The raw contents of the file
+    :type file_contents: str
+    :param mode: Optional DECIMAL mode to use
+    :type mode: int
+    :returns: Ignition net config snippet
+    :rtype: dict
+    """
+    return {
+        'path': file_path,
+        'mode': mode,
+        'contents': {
+            'source': 'data:,{}'.format(quote(file_contents))
+        }
+    }
+
+
+def merge_with_ignition(ignition_cfg, net_cfgs):
+    """
+    Merge net configs into the ignition config.
+
+    :param ignition_cfg: Ignition structure to append to
+    :type ignition_cfg: dict
+    :param net_cfgs: List of network configs as dict Ignition snippets
+    :type net_cfgs: list
+    :returns: Merged ignition dict
+    :rtype: dict
+    """
+    for file_cfg in ignition_cfg['storage']['files']:
+        if file_cfg['path'].startswith('/etc/sysconfig/network-scripts/'):
+            pass
+            # TODO: Do something? Remove generated ones? Leave them alone?
+    for net_cfg in net_cfgs:
+        ignition_cfg['storage']['files'].append(net_cfg)
+    return ignition_cfg
+
+
+def main():
+    """
+    Main entry point
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-i', '--ignition', help='Path to ignition file to use as the base',
+        required=True)
+    parser.add_argument(
+        '-n', '--network-dir', help='Path to the directory housing network scripts',
+        required=True)
+    parser.add_argument(
+        '-o', '--output', help='Where to output the file. If empty, will print to stdout.')
+
+    args = parser.parse_args()
+
+    # Open the ignition file and load it
+    with open(args.ignition, 'r') as f:
+        # Get the ignition config
+        ignition_cfg = json.load(f)
+
+        # TODO: Generate the networkscripts? Anaconda?
+
+        # Parse the network files and append them for merging
+        network_files = []
+        for f in os.listdir(args.network_dir):
+            net_cfg_path = os.path.join(args.network_dir, f)
+            with open(net_cfg_path, 'r') as net_f:
+                net_cfg = net_cfg_to_ignition(
+                    '/etc/sysconfig/network-scripts/{}'.format(f),
+                    net_f.read())
+            network_files.append(net_cfg)
+
+        # Merge the and output the results
+        merged_ignition_cfg = json.dumps(
+            merge_with_ignition(ignition_cfg, network_files),
+            sort_keys=True, indent=4, separators=(',', ': '))
+        if args.output:
+            with open(args.output, 'w') as out_f:
+                out_f.write(merged_ignition_cfg)
+        else:
+            print(merged_ignition_cfg)
+
+
+if __name__ == '__main__':
+    main()
