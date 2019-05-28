@@ -44,6 +44,16 @@ def merge_with_ignition(ignition_cfg, files):
     :returns: Merged ignition dict
     :rtype: dict
     """
+    # Check that the storage exists
+    storage_check = ignition_cfg.get('storage')
+    if storage_check == None:
+        ignition_cfg['storage'] = {}
+
+    # Check that files exists
+    files_check = ignition_cfg['storage'].get('files')
+    if files_check == None:
+        ignition_cfg['storage']['files'] = []
+
     for a_file in files:
         ignition_cfg['storage']['files'].append(a_file)
     return ignition_cfg
