@@ -13,7 +13,7 @@ from urllib.parse import quote
 
 def file_to_ignition(file_path, file_contents, mode):
     """
-    Turns a network config file into an ignition snippet.
+    Turns a file into an ignition snippet.
 
     :param file_path: Path to where the file should be placed.
     :type file_path: str
@@ -21,7 +21,7 @@ def file_to_ignition(file_path, file_contents, mode):
     :type file_contents: str
     :param mode: Octal mode to use (will translate to decimal)
     :type mode: int
-    :returns: Ignition net config snippet
+    :returns: Ignition config snippet
     :rtype: dict
     """
     return {

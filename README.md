@@ -1,25 +1,25 @@
-# nettranspiler
+# filetranspiler
 Creates an update `Ignition` json file with additions from a fake root.
 
 ## Building
 
 ### Container Image
 ```
-$ podman build . -t nettranspiler:latest
+$ podman build . -t filetranspiler:latest
 ```
 
 ## Running
 
 ### Source
 ```
-./nettranspile -i ignition.json -f fake-root
+./filetranspile -i ignition.json -f fake-root
 ```
 
 ### Container Image
 **Note**: When using the container don't forget to mount the host directory that houses your ignition
 file and fake root in to the container!
 ```
-$ podman run --rm -ti --volume `pwd`:/srv:z localhost/nettranspiler:latest -i ignition.json -f fake-root
+$ podman run --rm -ti --volume `pwd`:/srv:z localhost/filetranspiler:latest -i ignition.json -f fake-root
 ```
 
 ## Example
@@ -35,8 +35,8 @@ fake-root
             └── ifcfg-fake
 
 3 directories, 4 files
-$ ./nettranspile --help
-usage: nettranspile [-h] -i IGNITION -f FAKE_ROOT [-o OUTPUT]
+$ ./filetranspile --help
+usage: filetranspile [-h] -i IGNITION -f FAKE_ROOT [-o OUTPUT]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -62,7 +62,7 @@ $ cat ignition.json
         "contents": { "source": "data:,example%20file%0A" }
     }]
   }
-$ ./nettranspile -i ignition.json -f fake-root
+$ ./filetranspile -i ignition.json -f fake-root
 {
     "ignition": {
         "version": "3.0.0"

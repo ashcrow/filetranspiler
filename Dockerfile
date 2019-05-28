@@ -1,9 +1,9 @@
 FROM registry.fedoraproject.org/fedora:latest
 
-COPY nettranspile /usr/bin/nettranspile
+COPY filetranspile /usr/bin/filetranspile
 
 RUN dnf update -y && \
-    chmod a+x /usr/bin/nettranspile
+    chmod a+x /usr/bin/filetranspile
 
 WORKDIR /srv
-ENTRYPOINT ["/usr/bin/nettranspile"]
+ENTRYPOINT ["/usr/bin/filetranspile"]
