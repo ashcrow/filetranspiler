@@ -26,6 +26,7 @@ def file_to_ignition(file_path, file_contents, mode):
     """
     return {
         'path': file_path,
+        "filesystem": 'root',
         'mode': int(mode, 8),
         'contents': {
             'source': 'data:,{}'.format(quote(file_contents))
