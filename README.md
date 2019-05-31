@@ -53,11 +53,13 @@ $ cat ignition.json
   "storage": {
     "files": [{
       "path": "/foo/bar",
+      "filesystem": "root",
       "mode": 420,
       "contents": { "source": "data:,example%20file%0A" }
     },
     {
         "path": "/etc/sysconfig/network-scripts/iftest",
+        "filesystem": "root",
         "mode": 420,
         "contents": { "source": "data:,example%20file%0A" }
     }]
@@ -73,6 +75,7 @@ $ ./filetranspile -i ignition.json -f fake-root
                 "contents": {
                     "source": "data:,example%20file%0A"
                 },
+                "filesystem": "root",
                 "mode": 420,
                 "path": "/foo/bar"
             },
@@ -80,6 +83,7 @@ $ ./filetranspile -i ignition.json -f fake-root
                 "contents": {
                     "source": "data:,example%20file%0A"
                 },
+                "filesystem": "root",
                 "mode": 420,
                 "path": "/etc/sysconfig/network-scripts/iftest"
             },
@@ -87,6 +91,7 @@ $ ./filetranspile -i ignition.json -f fake-root
                 "contents": {
                     "source": "data:,something%0A"
                 },
+                "filesystem": "root",
                 "mode": 384,
                 "path": "/etc/hostname"
             },
@@ -94,6 +99,7 @@ $ ./filetranspile -i ignition.json -f fake-root
                 "contents": {
                     "source": "data:,search%20127.0.0.1%0Anameserver%20127.0.0.1%0A"
                 },
+                "filesystem": "root",
                 "mode": 436,
                 "path": "/etc/resolve.conf"
             },
@@ -101,6 +107,7 @@ $ ./filetranspile -i ignition.json -f fake-root
                 "contents": {
                     "source": "data:,fake%0A"
                 },
+                "filesystem": "root",
                 "mode": 436,
                 "path": "/etc/sysconfig/network-scripts/ifcfg-fake"
             },
@@ -108,6 +115,7 @@ $ ./filetranspile -i ignition.json -f fake-root
                 "contents": {
                     "source": "data:,blah%20blah%20blah%0A1234567890%0Ablah%20blah%20blah%0A"
                 },
+                "filesystem": "root",
                 "mode": 436,
                 "path": "/etc/sysconfig/network-scripts/ifcfg-blah"
             }
