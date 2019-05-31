@@ -1,0 +1,11 @@
+{
+  "ignition": { "version": "3.0.0" },
+  "storage": {
+    "files": [{
+      "path": "/foo/bar",
+      "filesystem": "root",
+      "mode": 420,
+      "contents": { "source": "data:,example%20file%0A" }
+    }]
+  }
+}
