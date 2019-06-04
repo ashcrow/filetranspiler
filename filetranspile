@@ -72,8 +72,11 @@ def main():
         '-f', '--fake-root', help='Path to the fake root',
         required=True)
     parser.add_argument(
-        '-o', '--output', help='Where to output the file. If empty, will print to stdout.')
-
+        '-o', '--output',
+        help='Where to output the file. If empty, will print to stdout')
+    parser.add_argument(
+        '-p', '--pretty', default=False, action='store_true',
+        help='Make the output pretty')
     args = parser.parse_args()
 
     # Open the ignition file and load it
@@ -95,14 +98,17 @@ def main():
                 all_files.append(snippet)
 
         # Merge the and output the results
-        merged_ignition_cfg = json.dumps(
-            merge_with_ignition(ignition_cfg, all_files),
-            sort_keys=True, indent=4, separators=(',', ': '))
+        merged_ignition = merge_with_ignition(ignition_cfg, all_files)
+        if args.pretty:
+            ignition_out = json.dumps(merged_ignition,
+                sort_keys=True, indent=4, separators=(',', ': '))
+        else:
+            ignition_out = json.dumps(merged_ignition)
         if args.output:
             with open(args.output, 'w') as out_f:
-                out_f.write(merged_ignition_cfg)
+                out_f.write(ignition_out)
         else:
-            print(merged_ignition_cfg)
+            print(ignition_out)
 
 
 if __name__ == '__main__':
