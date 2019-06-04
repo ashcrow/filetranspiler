@@ -49,12 +49,12 @@ def merge_with_ignition(ignition_cfg, files):
     """
     # Check that the storage exists
     storage_check = ignition_cfg.get('storage')
-    if storage_check == None:
+    if storage_check is None:
         ignition_cfg['storage'] = {}
 
     # Check that files exists
     files_check = ignition_cfg['storage'].get('files')
-    if files_check == None:
+    if files_check is None:
         ignition_cfg['storage']['files'] = []
 
     for a_file in files:
@@ -100,14 +100,16 @@ def main():
                     host_path = os.path.sep + host_path
                 mode = oct(stat.S_IMODE(os.stat(path).st_mode))
                 with open(path, 'r') as file_obj:
-                    snippet = file_to_ignition(host_path, file_obj.read(), mode)
+                    snippet = file_to_ignition(
+                        host_path, file_obj.read(), mode)
                 all_files.append(snippet)
 
         # Merge the and output the results
         merged_ignition = merge_with_ignition(ignition_cfg, all_files)
         if args.pretty:
-            ignition_out = json.dumps(merged_ignition,
-                sort_keys=True, indent=4, separators=(',', ': '))
+            ignition_out = json.dumps(
+                merged_ignition, sort_keys=True,
+                indent=4, separators=(',', ': '))
         else:
             ignition_out = json.dumps(merged_ignition)
         if args.output:
