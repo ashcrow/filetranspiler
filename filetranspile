@@ -10,6 +10,8 @@ import stat
 
 from urllib.parse import quote
 
+__version__ = '1.0.0'
+
 
 def file_to_ignition(file_path, file_contents, mode):
     """
@@ -77,6 +79,10 @@ def main():
     parser.add_argument(
         '-p', '--pretty', default=False, action='store_true',
         help='Make the output pretty')
+    parser.add_argument(
+        '--version', action='version',
+        version='%(prog)s {}'.format(__version__))
+
     args = parser.parse_args()
 
     # Open the ignition file and load it
