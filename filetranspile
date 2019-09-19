@@ -3,6 +3,7 @@
 Takes a fake root and appends them into a provided ignition configuration.
 """
 
+import abc
 import argparse
 import json
 import os
@@ -10,56 +11,183 @@ import stat
 
 from urllib.parse import quote
 
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 
 
-def file_to_ignition(file_path, file_contents, mode):
+class FileTranspilerError(Exception):
     """
-    Turns a file into an ignition snippet.
-
-    :param file_path: Path to where the file should be placed.
-    :type file_path: str
-    :param file_contents: The raw contents of the file
-    :type file_contents: str
-    :param mode: Octal mode to use (will translate to decimal)
-    :type mode: int
-    :returns: Ignition config snippet
-    :rtype: dict
+    Base exception for FileTranspiler errors.
     """
-    return {
-        'path': file_path,
-        "filesystem": 'root',
-        'mode': int(mode, 8),
-        'contents': {
-            'source': 'data:,{}'.format(quote(file_contents))
+    pass
+
+
+class IgnitionSpec(abc.ABC):
+    """
+    Base class for IgnitionSpec classes.
+    """
+
+    def __init__(self, ignition_cfg, fake_root):
+        """
+        Initialize a spec merger.
+
+        :param ignition_cfg: loaded ignition config json
+        :type ignition_cfg: dict
+        :param fake_root: Full path to the fake root to include
+        :type fake_root: str
+        """
+        self.ignition_cfg = ignition_cfg
+        self.fake_root = fake_root
+
+    @abc.abstractmethod
+    def file_to_ignition(self, file_path, file_contents, mode):
+        """
+        Turns a file into an ignition snippet.
+
+        :param file_path: Path to where the file should be placed.
+        :type file_path: str
+        :param file_contents: The raw contents of the file
+        :type file_contents: str
+        :param mode: Octal mode to use (will translate to decimal)
+        :type mode: int
+        :returns: Ignition config snippet
+        :rtype: dict
+        """
+        raise NotImplementedError('Must be implemented in a subclass')
+
+    def merge_with_ignition(self, ignition_cfg, files):
+        """
+        Merge file snippets into the ignition config.
+
+        :param ignition_cfg: Ignition structure to append to
+        :type ignition_cfg: dict
+        :param files: List of Ignition file snippets
+        :type files: list
+        :returns: Merged ignition dict
+        :rtype: dict
+        """
+        # Check that the storage exists
+        storage_check = ignition_cfg.get('storage')
+        if storage_check is None:
+            ignition_cfg['storage'] = {}
+
+        # Check that files exists
+        files_check = ignition_cfg['storage'].get('files')
+        if files_check is None:
+            ignition_cfg['storage']['files'] = []
+
+        for a_file in files:
+            ignition_cfg['storage']['files'].append(a_file)
+        return ignition_cfg
+
+    def merge(self):
+        """
+        Merges the fakeroot into the ignition config.
+
+        :returns: The merged ignition config
+        :rtype: dict
+        """
+        # Walk through the files and append them for merging
+        all_files = []
+        for root, _, files in os.walk(self.fake_root):
+            for file in files:
+                path = os.path.sep.join([root, file])
+                host_path = path.replace(self.fake_root, '')
+                if not host_path.startswith(os.path.sep):
+                    host_path = os.path.sep + host_path
+                mode = oct(stat.S_IMODE(os.stat(path).st_mode))
+                with open(path, 'r') as file_obj:
+                    snippet = self.file_to_ignition(
+                        host_path, file_obj.read(), mode)
+                all_files.append(snippet)
+
+        # Merge the and output the results
+        merged_ignition = self.merge_with_ignition(
+            self.ignition_cfg, all_files)
+        return merged_ignition
+
+
+class SpecV2(IgnitionSpec):
+    """
+    Spec v2 implementation for merging files.
+    """
+
+    def file_to_ignition(self, file_path, file_contents, mode):
+        """
+        Turns a file into an ignition snippet.
+
+        :param file_path: Path to where the file should be placed.
+        :type file_path: str
+        :param file_contents: The raw contents of the file
+        :type file_contents: str
+        :param mode: Octal mode to use (will translate to decimal)
+        :type mode: int
+        :returns: Ignition config snippet
+        :rtype: dict
+        """
+        return {
+            'path': file_path,
+            "filesystem": 'root',
+            'mode': int(mode, 8),
+            'contents': {
+                'source': 'data:,{}'.format(quote(file_contents))
+            }
         }
-    }
 
 
-def merge_with_ignition(ignition_cfg, files):
+class SpecV3(IgnitionSpec):
     """
-    Merge file snippets into the ignition config.
-
-    :param ignition_cfg: Ignition structure to append to
-    :type ignition_cfg: dict
-    :param files: List of Ignition file snippets
-    :type files: list
-    :returns: Merged ignition dict
-    :rtype: dict
+    Spec v3 implementation for merging files.
     """
-    # Check that the storage exists
-    storage_check = ignition_cfg.get('storage')
-    if storage_check is None:
-        ignition_cfg['storage'] = {}
 
-    # Check that files exists
-    files_check = ignition_cfg['storage'].get('files')
-    if files_check is None:
-        ignition_cfg['storage']['files'] = []
+    def file_to_ignition(self, file_path, file_contents, mode):
+        """
+        Turns a file into an ignition snippet.
 
-    for a_file in files:
-        ignition_cfg['storage']['files'].append(a_file)
-    return ignition_cfg
+        :param file_path: Path to where the file should be placed.
+        :type file_path: str
+        :param file_contents: The raw contents of the file
+        :type file_contents: str
+        :param mode: Octal mode to use (will translate to decimal)
+        :type mode: int
+        :returns: Ignition config snippet
+        :rtype: dict
+        """
+        return {
+            'path': file_path,
+            'mode': int(mode, 8),
+            'overwrite': True,
+            'contents': {
+                'source': 'data:,{}'.format(quote(file_contents))
+            }
+        }
+
+
+def loader(ignition_file):
+    """
+    Loads the ignition json into a structure, senses the ignition
+    spec version, and returns the structure and it's spec class.
+
+    :param ignition_file: Path to the ignition file to parse
+    :type ignition_file: str
+    :returns: The ignition structure and spec class
+    :rtype: tuple
+    :raises: FileTranspilerError
+    """
+    try:
+        with open(ignition_file, 'r') as f:
+            ignition_cfg = json.load(f)
+        ignition_version = ignition_cfg['ignition']['version']
+        version_tpl = ignition_version.split('.')
+
+        if version_tpl[0] == '2':
+            return ignition_cfg, SpecV2
+        elif version_tpl[0] == '3':
+            return ignition_cfg, SpecV3
+        raise FileTranspilerError(f'Unkown ignition spec: {ignition_version}')
+    except (KeyError, IndexError) as err:
+        raise FileTranspilerError(f'Unable to find version in spec: {err}')
+    except json.JSONDecodeError as err:
+        raise FileTranspilerError(f'Unable to read JSON: {err}')
 
 
 def main():
@@ -86,28 +214,21 @@ def main():
 
     # Open the base ignition file and load it
     if args.ignition is not None:
-        with open(args.ignition, 'r') as f:
-            # Get the ignition config
-            ignition_cfg = json.load(f)
+        # Get the ignition config
+        try:
+            ignition_cfg, spec_cls = loader(args.ignition)
+            ignition_spec = spec_cls(ignition_cfg, args.fake_root)
+            
+        except FileTranspilerError as err:
+            parser.error(err)
     else:
+        # Default to empty spec 2.3.0
         ignition_cfg = { "ignition": { "version": "2.3.0" } }
-
-    # Walk through the files and append them for merging
-    all_files = []
-    for root, _, files in os.walk(args.fake_root):
-        for file in files:
-            path = os.path.sep.join([root, file])
-            host_path = path.replace(args.fake_root, '')
-            if not host_path.startswith(os.path.sep):
-                host_path = os.path.sep + host_path
-            mode = oct(stat.S_IMODE(os.stat(path).st_mode))
-            with open(path, 'r') as file_obj:
-                snippet = file_to_ignition(
-                    host_path, file_obj.read(), mode)
-            all_files.append(snippet)
+        ignition_spec = SpecV2(ignition_cfg, args.fake_root)
 
     # Merge the and output the results
-    merged_ignition = merge_with_ignition(ignition_cfg, all_files)
+    merged_ignition = ignition_spec.merge()
+
     if args.pretty:
         ignition_out = json.dumps(
             merged_ignition, sort_keys=True,
