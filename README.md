@@ -68,6 +68,7 @@ $ cat ignition.json
         "contents": { "source": "data:,example%20file%0A" }
     }]
   }
+}
 $ ./filetranspile -i ignition.json -f fake-root
 {"ignition": {"version": "2.3.0"}, "storage": {"files": [{"path": "/foo/bar", "filesystem": "root", "mode": 420, "contents": {"source": "data:,example%20file%0A"}}, {"path": "/etc/hostname", "filesystem": "root", "mode": 384, "contents": {"source": "data:,something%0A"}}, {"path": "/etc/resolve.conf", "filesystem": "root", "mode": 436, "contents": {"source": "data:,search%20127.0.0.1%0Anameserver%20127.0.0.1%0A"}}, {"path": "/etc/sysconfig/network-scripts/ifcfg-fake", "filesystem": "root", "mode": 436, "contents": {"source": "data:,fake%0A"}}, {"path": "/etc/sysconfig/network-scripts/ifcfg-blah", "filesystem": "root", "mode": 436, "contents": {"source": "data:,blah%20blah%20blah%0A1234567890%0Ablah%20blah%20blah%0A"}}]}}
 ```
