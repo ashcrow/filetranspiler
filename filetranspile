@@ -68,8 +68,7 @@ def main():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-i', '--ignition', help='Path to ignition file to use as the base',
-        required=True)
+        '-i', '--ignition', help='Path to ignition file to use as the base')
     parser.add_argument(
         '-f', '--fake-root', help='Path to the fake root',
         required=True)
@@ -85,10 +84,13 @@ def main():
 
     args = parser.parse_args()
 
-    # Open the ignition file and load it
-    with open(args.ignition, 'r') as f:
-        # Get the ignition config
-        ignition_cfg = json.load(f)
+    # Open the base ignition file and load it
+    if args.ignition is not None:
+        with open(args.ignition, 'r') as f:
+            # Get the ignition config
+            ignition_cfg = json.load(f)
+    else:
+        ignition_cfg = { "ignition": { "version": "2.3.0" } }
 
     # Walk through the files and append them for merging
     all_files = []
