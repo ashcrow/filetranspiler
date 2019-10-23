@@ -1,5 +1,7 @@
 # filetranspiler
-Creates an update `Ignition` json file with additions from a fake root.
+Creates an [Ignition](https://github.com/coreos/ignition) JSON file from a fake root.
+
+See also [fcct](https://github.com/coreos/fcct).
 
 ## Building
 
