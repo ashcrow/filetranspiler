@@ -90,33 +90,33 @@ def main():
         # Get the ignition config
         ignition_cfg = json.load(f)
 
-        # Walk through the files and append them for merging
-        all_files = []
-        for root, _, files in os.walk(args.fake_root):
-            for file in files:
-                path = os.path.sep.join([root, file])
-                host_path = path.replace(args.fake_root, '')
-                if not host_path.startswith(os.path.sep):
-                    host_path = os.path.sep + host_path
-                mode = oct(stat.S_IMODE(os.stat(path).st_mode))
-                with open(path, 'r') as file_obj:
-                    snippet = file_to_ignition(
-                        host_path, file_obj.read(), mode)
-                all_files.append(snippet)
+    # Walk through the files and append them for merging
+    all_files = []
+    for root, _, files in os.walk(args.fake_root):
+        for file in files:
+            path = os.path.sep.join([root, file])
+            host_path = path.replace(args.fake_root, '')
+            if not host_path.startswith(os.path.sep):
+                host_path = os.path.sep + host_path
+            mode = oct(stat.S_IMODE(os.stat(path).st_mode))
+            with open(path, 'r') as file_obj:
+                snippet = file_to_ignition(
+                    host_path, file_obj.read(), mode)
+            all_files.append(snippet)
 
-        # Merge the and output the results
-        merged_ignition = merge_with_ignition(ignition_cfg, all_files)
-        if args.pretty:
-            ignition_out = json.dumps(
-                merged_ignition, sort_keys=True,
-                indent=4, separators=(',', ': '))
-        else:
-            ignition_out = json.dumps(merged_ignition)
-        if args.output:
-            with open(args.output, 'w') as out_f:
-                out_f.write(ignition_out)
-        else:
-            print(ignition_out)
+    # Merge the and output the results
+    merged_ignition = merge_with_ignition(ignition_cfg, all_files)
+    if args.pretty:
+        ignition_out = json.dumps(
+            merged_ignition, sort_keys=True,
+            indent=4, separators=(',', ': '))
+    else:
+        ignition_out = json.dumps(merged_ignition)
+    if args.output:
+        with open(args.output, 'w') as out_f:
+            out_f.write(ignition_out)
+    else:
+        print(ignition_out)
 
 
 if __name__ == '__main__':
