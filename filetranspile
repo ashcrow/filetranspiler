@@ -54,7 +54,21 @@ class IgnitionSpec(abc.ABC):
         """
         raise NotImplementedError('Must be implemented in a subclass')
 
-    def merge_with_ignition(self, ignition_cfg, files):
+    @abc.abstractmethod
+    def link_to_ignition(self, file_path, target_path):
+        """
+        Turns a symbolic link into an ignition snippet.
+
+        :param file_path: Path to where the file should be placed.
+        :type file_path: str
+        :param target_path: The target path of the symbolic link
+        :type target_path: str
+        :returns: Ignition config snippet
+        :rtype: dict
+        """
+        raise NotImplementedError('Must be implemented in a subclass')
+
+    def merge_with_ignition(self, ignition_cfg, files, links):
         """
         Merge file snippets into the ignition config.
 
@@ -70,13 +84,24 @@ class IgnitionSpec(abc.ABC):
         if storage_check is None:
             ignition_cfg['storage'] = {}
 
-        # Check that files exists
-        files_check = ignition_cfg['storage'].get('files')
-        if files_check is None:
-            ignition_cfg['storage']['files'] = []
+        if files:
+            # Check that files entry exists
+            files_check = ignition_cfg['storage'].get('files')
+            if files_check is None:
+                ignition_cfg['storage']['files'] = []
 
-        for a_file in files:
-            ignition_cfg['storage']['files'].append(a_file)
+            for a_file in files:
+                ignition_cfg['storage']['files'].append(a_file)
+
+        if links:
+            # Check that links entry exists
+            links_check = ignition_cfg['storage'].get('links')
+            if links_check is None:
+                ignition_cfg['storage']['links'] = []
+
+            for a_link in links:
+                ignition_cfg['storage']['links'].append(a_link)
+
         return ignition_cfg
 
     def merge(self):
@@ -88,21 +113,28 @@ class IgnitionSpec(abc.ABC):
         """
         # Walk through the files and append them for merging
         all_files = []
+        all_links = []
         for root, _, files in os.walk(self.fake_root):
             for file in files:
                 path = os.path.sep.join([root, file])
                 host_path = path.replace(self.fake_root, '')
                 if not host_path.startswith(os.path.sep):
                     host_path = os.path.sep + host_path
-                mode = oct(stat.S_IMODE(os.stat(path).st_mode))
-                with open(path, 'r') as file_obj:
-                    snippet = self.file_to_ignition(
-                        host_path, file_obj.read(), mode)
-                all_files.append(snippet)
+                if os.path.islink(path):
+                    target_path = os.readlink(path)
+                    snippet = self.link_to_ignition(
+                        host_path, target_path)
+                    all_links.append(snippet)
+                else:
+                    mode = oct(stat.S_IMODE(os.stat(path).st_mode))
+                    with open(path, 'r') as file_obj:
+                        snippet = self.file_to_ignition(
+                            host_path, file_obj.read(), mode)
+                    all_files.append(snippet)
 
         # Merge the and output the results
         merged_ignition = self.merge_with_ignition(
-            self.ignition_cfg, all_files)
+            self.ignition_cfg, all_files, all_links)
         return merged_ignition
 
 
@@ -133,6 +165,24 @@ class SpecV2(IgnitionSpec):
             }
         }
 
+    def link_to_ignition(self, file_path, target_path):
+        """
+        Turns a symbolic link into an ignition snippet.
+
+        :param file_path: Path to where the file should be placed.
+        :type file_path: str
+        :param target_path: The target path of the symbolic link
+        :type target_path: str
+        :returns: Ignition config snippet
+        :rtype: dict
+        """
+        return {
+            'path': file_path,
+            "filesystem": 'root',
+            'target' : target_path,
+            'hard': False
+        }
+
 
 class SpecV3(IgnitionSpec):
     """
@@ -159,6 +209,24 @@ class SpecV3(IgnitionSpec):
             'contents': {
                 'source': 'data:,{}'.format(quote(file_contents))
             }
+        }
+
+    def link_to_ignition(self, file_path, target_path):
+        """
+        Turns a symbolic link into an ignition snippet.
+
+        :param file_path: Path to where the file should be placed.
+        :type file_path: str
+        :param target_path: The target path of the symbolic link
+        :type target_path: str
+        :returns: Ignition config snippet
+        :rtype: dict
+        """
+        return {
+            'path': file_path,
+            'overwrite': True,
+            'target' : target_path,
+            'hard': False
         }
 
 
