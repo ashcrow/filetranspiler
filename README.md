@@ -39,7 +39,8 @@ fake-root
 3 directories, 4 files
 $ ./filetranspile --help
 usage: filetranspile [-h] [-i IGNITION] -f FAKE_ROOT [-o OUTPUT] [-p]
-                     [--dereference-symlinks] [--version]
+                     [--dereference-symlinks] [--format {json,yaml}]
+                     [--version]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -54,6 +55,8 @@ optional arguments:
   --dereference-symlinks
                         Write out file contents instead of making symlinks
                         NOTE: Target files must exist in the fakeroot
+  --format {json,yaml}  What format of file to write out. `yaml` or `json`
+                        (default)
   --version             show program's version number and exit
 $ cat ignition.json 
 {
