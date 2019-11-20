@@ -38,8 +38,8 @@ fake-root
 
 3 directories, 4 files
 $ ./filetranspile --help
-usage: filetranspile [-h] -i IGNITION -f FAKE_ROOT [-o OUTPUT] [-p]
-                     [--version]
+usage: filetranspile [-h] [-i IGNITION] -f FAKE_ROOT [-o OUTPUT] [-p]
+                     [--dereference-symlinks] [--version]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -51,8 +51,10 @@ optional arguments:
                         Where to output the file. If empty, will print to
                         stdout
   -p, --pretty          Make the output pretty
+  --dereference-symlinks
+                        Write out file contents instead of making symlinks
+                        NOTE: Target files must exist in the fakeroot
   --version             show program's version number and exit
-
 $ cat ignition.json 
 {
   "ignition": { "version": "2.3.0" },
