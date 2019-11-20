@@ -9,6 +9,7 @@ import json
 import os
 import pathlib
 import stat
+import yaml
 
 from urllib.parse import quote
 
@@ -296,7 +297,9 @@ def main():
         '--dereference-symlinks', default=False, action='store_true',
         help=('Write out file contents instead of making symlinks '
               'NOTE: Target files must exist in the fakeroot'))
-
+    parser.add_argument(
+        '--format', default='json', choices=['json', 'yaml'],
+        help='What format of file to write out. `yaml` or `json` (default)')
     parser.add_argument(
         '--version', action='version',
         version='%(prog)s {}'.format(__version__))
@@ -320,12 +323,15 @@ def main():
     # Merge the and output the results
     merged_ignition = ignition_spec.merge()
 
-    if args.pretty:
-        ignition_out = json.dumps(
-            merged_ignition, sort_keys=True,
-            indent=4, separators=(',', ': '))
+    if args.format == 'json':
+        if args.pretty:
+            ignition_out = json.dumps(
+                merged_ignition, sort_keys=True,
+                indent=4, separators=(',', ': '))
+        else:
+            ignition_out = json.dumps(merged_ignition)
     else:
-        ignition_out = json.dumps(merged_ignition)
+        ignition_out = yaml.safe_dump(merged_ignition)
     if args.output:
         with open(args.output, 'w') as out_f:
             out_f.write(ignition_out)
