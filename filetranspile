@@ -7,6 +7,7 @@ import abc
 import argparse
 import json
 import os
+import pathlib
 import stat
 
 from urllib.parse import quote
@@ -26,17 +27,18 @@ class IgnitionSpec(abc.ABC):
     Base class for IgnitionSpec classes.
     """
 
-    def __init__(self, ignition_cfg, fake_root):
+    def __init__(self, ignition_cfg, cli_args):
         """
         Initialize a spec merger.
 
         :param ignition_cfg: loaded ignition config json
         :type ignition_cfg: dict
-        :param fake_root: Full path to the fake root to include
-        :type fake_root: str
+        :param cli_args: Command line arguments
+        :type cli_args: argparse.Namespace
         """
         self.ignition_cfg = ignition_cfg
-        self.fake_root = fake_root
+        self.fake_root = cli_args.fake_root
+        self.dereference_symlinks = cli_args.dereference_symlinks
 
     @abc.abstractmethod
     def file_to_ignition(self, file_path, file_contents, mode):
@@ -121,10 +123,26 @@ class IgnitionSpec(abc.ABC):
                 if not host_path.startswith(os.path.sep):
                     host_path = os.path.sep + host_path
                 if os.path.islink(path):
-                    target_path = os.readlink(path)
-                    snippet = self.link_to_ignition(
-                        host_path, target_path)
-                    all_links.append(snippet)
+                    # If we are dereferencing symlinks then treat it as
+                    # a file
+                    if self.dereference_symlinks:
+                        source_path = str(pathlib.Path(path).resolve())
+                        # Ensure the path is within the fakeroot
+                        if not source_path.startswith(
+                                os.path.realpath(self.fake_root)):
+                            raise FileTranspilerError((
+                                f'link: {source_path} is not in the '
+                                f'fake root: {self.fake_root}'))
+                        mode = oct(stat.S_IMODE(os.stat(source_path).st_mode))
+                        with open(source_path, 'r') as file_obj:
+                            snippet = self.file_to_ignition(
+                                host_path, file_obj.read(), mode)
+                            all_files.append(snippet)
+                    else:
+                        target_path = os.readlink(path)
+                        snippet = self.link_to_ignition(
+                            host_path, target_path)
+                        all_links.append(snippet)
                 else:
                     mode = oct(stat.S_IMODE(os.stat(path).st_mode))
                     with open(path, 'r') as file_obj:
@@ -275,6 +293,11 @@ def main():
         '-p', '--pretty', default=False, action='store_true',
         help='Make the output pretty')
     parser.add_argument(
+        '--dereference-symlinks', default=False, action='store_true',
+        help=('Write out file contents instead of making symlinks '
+              'NOTE: Target files must exist in the fakeroot'))
+
+    parser.add_argument(
         '--version', action='version',
         version='%(prog)s {}'.format(__version__))
 
@@ -285,14 +308,14 @@ def main():
         # Get the ignition config
         try:
             ignition_cfg, spec_cls = loader(args.ignition)
-            ignition_spec = spec_cls(ignition_cfg, args.fake_root)
+            ignition_spec = spec_cls(ignition_cfg, args)
             
         except FileTranspilerError as err:
             parser.error(err)
     else:
         # Default to empty spec 2.3.0
         ignition_cfg = { "ignition": { "version": "2.3.0" } }
-        ignition_spec = SpecV2(ignition_cfg, args.fake_root)
+        ignition_spec = SpecV2(ignition_cfg, args)
 
     # Merge the and output the results
     merged_ignition = ignition_spec.merge()
