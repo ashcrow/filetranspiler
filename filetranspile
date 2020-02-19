@@ -131,9 +131,9 @@ class IgnitionSpec(abc.ABC):
                         # Ensure the path is within the fakeroot
                         if not source_path.startswith(
                                 os.path.realpath(self.fake_root)):
-                            raise FileTranspilerError((
-                                f'link: {source_path} is not in the '
-                                f'fake root: {self.fake_root}'))
+                            raise FileTranspilerError(
+                                'link: {} is not in the fake root: {}'.format(
+                                    source_path, self.fake_root))
                         mode = oct(stat.S_IMODE(os.stat(source_path).st_mode))
                         with open(source_path, 'r') as file_obj:
                             snippet = self.file_to_ignition(
@@ -270,11 +270,14 @@ def loader(ignition_file):
             return ignition_cfg, SpecV2
         elif version_tpl[0] == '3':
             return ignition_cfg, SpecV3
-        raise FileTranspilerError(f'Unkown ignition spec: {ignition_version}')
+        raise FileTranspilerError(
+            'Unkown ignition spec: {}'.format(ignition_version))
     except (KeyError, IndexError) as err:
-        raise FileTranspilerError(f'Unable to find version in spec: {err}')
+        raise FileTranspilerError(
+            'Unable to find version in spec: {}'.format(err))
     except json.JSONDecodeError as err:
-        raise FileTranspilerError(f'Unable to read JSON: {err}')
+        raise FileTranspilerError(
+            'Unable to read JSON: {}'.format(err))
 
 
 def main():
