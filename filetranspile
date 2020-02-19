@@ -13,7 +13,7 @@ import yaml
 
 from urllib.parse import quote
 
-__version__ = '1.1.0'
+__version__ = '1.1.1'
 
 
 class FileTranspilerError(Exception):
