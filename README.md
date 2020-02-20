@@ -13,6 +13,13 @@ $ podman build . -t filetranspiler:latest
 ## Running
 
 ### Source
+
+These items are required when running outside of the container.
+
+- Python 3 (3.6+ recommended)
+- [PyYAML](https://github.com/yaml/pyyaml)
+
+
 ```
 ./filetranspile -i ignition.json -f fake-root
 ```
