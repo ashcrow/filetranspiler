@@ -5,13 +5,14 @@ Takes a fake root and appends them into a provided ignition configuration.
 
 import abc
 import argparse
+import base64
 import json
+import magic
 import os
 import pathlib
 import stat
 import yaml
 
-from urllib.parse import quote
 
 __version__ = '1.1.1'
 
@@ -40,6 +41,11 @@ class IgnitionSpec(abc.ABC):
         self.ignition_cfg = ignition_cfg
         self.fake_root = cli_args.fake_root
         self.dereference_symlinks = cli_args.dereference_symlinks
+        self.mimetype = magic.open(magic.MAGIC_MIME)
+        self.mimetype.load()
+
+    def __del__(self):
+        self.mimetype.close()
 
     @abc.abstractmethod
     def file_to_ignition(self, file_path, file_contents, mode):
@@ -48,7 +54,7 @@ class IgnitionSpec(abc.ABC):
 
         :param file_path: Path to where the file should be placed.
         :type file_path: str
-        :param file_contents: The raw contents of the file
+        :param file_contents: The header and transformed contents of the file
         :type file_contents: str
         :param mode: Octal mode to use (will translate to decimal)
         :type mode: int
@@ -56,6 +62,23 @@ class IgnitionSpec(abc.ABC):
         :rtype: dict
         """
         raise NotImplementedError('Must be implemented in a subclass')
+
+    def _encode_contents(self, file_path):
+        """
+        Internal encoding of contents.
+
+        :param file_path: Path to where the file is located.
+        :type file_path: str
+        :returns: Encoded file_contents
+        :rtype: str
+        """
+        header = ''.join(self.mimetype.file(file_path).split(' '))
+        with open(file_path, 'rb') as file_obj:
+            contents_base64 = base64.b64encode(
+                file_obj.read())
+            file_contents = 'data:{};base64,{}'.format(
+                header, contents_base64.decode('utf8'))
+            return file_contents
 
     @abc.abstractmethod
     def link_to_ignition(self, file_path, target_path):
@@ -135,10 +158,11 @@ class IgnitionSpec(abc.ABC):
                                 'link: {} is not in the fake root: {}'.format(
                                     source_path, self.fake_root))
                         mode = oct(stat.S_IMODE(os.stat(source_path).st_mode))
-                        with open(source_path, 'r') as file_obj:
-                            snippet = self.file_to_ignition(
-                                host_path, file_obj.read(), mode)
-                            all_files.append(snippet)
+                        snippet = self.file_to_ignition(
+                            host_path,
+                            self._encode_contents(source_path),
+                            mode)
+                        all_files.append(snippet)
                     else:
                         target_path = os.readlink(path)
                         snippet = self.link_to_ignition(
@@ -146,9 +170,8 @@ class IgnitionSpec(abc.ABC):
                         all_links.append(snippet)
                 else:
                     mode = oct(stat.S_IMODE(os.stat(path).st_mode))
-                    with open(path, 'r') as file_obj:
-                        snippet = self.file_to_ignition(
-                            host_path, file_obj.read(), mode)
+                    snippet = self.file_to_ignition(
+                        host_path, self._encode_contents(path), mode)
                     all_files.append(snippet)
 
         # Merge the and output the results
@@ -168,7 +191,7 @@ class SpecV2(IgnitionSpec):
 
         :param file_path: Path to where the file should be placed.
         :type file_path: str
-        :param file_contents: The raw contents of the file
+        :param file_contents: The header and transformed contents of the file
         :type file_contents: str
         :param mode: Octal mode to use (will translate to decimal)
         :type mode: int
@@ -180,7 +203,7 @@ class SpecV2(IgnitionSpec):
             "filesystem": 'root',
             'mode': int(mode, 8),
             'contents': {
-                'source': 'data:,{}'.format(quote(file_contents))
+                'source': file_contents,
             }
         }
 
@@ -214,7 +237,7 @@ class SpecV3(IgnitionSpec):
 
         :param file_path: Path to where the file should be placed.
         :type file_path: str
-        :param file_contents: The raw contents of the file
+        :param file_contents: The header and transformed contents of the file
         :type file_contents: str
         :param mode: Octal mode to use (will translate to decimal)
         :type mode: int
@@ -226,7 +249,7 @@ class SpecV3(IgnitionSpec):
             'mode': int(mode, 8),
             'overwrite': True,
             'contents': {
-                'source': 'data:,{}'.format(quote(file_contents))
+                'source': file_contents,
             }
         }
 
@@ -315,7 +338,6 @@ def main():
         try:
             ignition_cfg, spec_cls = loader(args.ignition)
             ignition_spec = spec_cls(ignition_cfg, args)
-            
         except FileTranspilerError as err:
             parser.error(err)
     else:
