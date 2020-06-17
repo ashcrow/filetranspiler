@@ -19,6 +19,7 @@ These items are required when running outside of the container.
 - Python 3 (3.6+ recommended)
 - [PyYAML](https://github.com/yaml/pyyaml)
 - python3-magic
+- file-magic
 
 ```
 ./filetranspile -i ignition.json -f fake-root
