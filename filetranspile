@@ -117,7 +117,15 @@ class IgnitionSpec(abc.ABC):
                 ignition_cfg['storage']['files'] = []
 
             for a_file in files:
-                ignition_cfg['storage']['files'].append(a_file)
+                index = -1
+                for i, f in enumerate(ignition_cfg['storage']['files']):
+                    if f['path'] == a_file['path']:
+                        index = i
+                        break
+                if index > -1:
+                    ignition_cfg['storage']['files'][index] = a_file
+                else:
+                    ignition_cfg['storage']['files'].append(a_file)
 
         if links:
             # Check that links entry exists
