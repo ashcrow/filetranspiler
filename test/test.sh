@@ -11,11 +11,13 @@ KEYS='"contents"
 FAILURES=0
 
 # Ensure we have require commands
-command -v jq > /dev/null
-if [ $? != 0 ]; then
-    echo "jq is required for testing"
-    exit 1
-fi
+for required_command in jq file; do
+    command -v "$required_command" > /dev/null
+    if [ $? != 0 ]; then
+        echo "$required_command is required for testing"
+        exit 1
+    fi
+done
 
 # Ensure the new files from the fakeroot are present
 test_expected_files() {
@@ -67,6 +69,31 @@ test_expected_keys() {
     fi
 }
 
+# Ensure the content of a file is what is expected
+test_expected_contents() {
+    tmpfile=$1
+    checkfile="$2"
+    frcheckfile="test/fakeroot$checkfile"
+    content="$3"
+    testname="$4: Content Check for $checkfile"
+    sourcecontent=$(jq -r ".storage.files[] | select(.path==\"${checkfile}\") | .contents.source" ${tmpfile})
+
+    # Replace mimetype/encoding
+    if [[ "$content" == *"{{mimetype}}"* ]]; then
+        localmimetype=$(file -b --mime-encoding --mime-type $frcheckfile | sed -e "s| ||g")
+        content=$(echo "$content" | sed -e "s|{{mimetype}}|$localmimetype|")
+    fi
+
+    if [ "$content" = "$sourcecontent" ]; then
+            echo "PASS: ${testname}"
+    else
+        echo "FAIL: $testname Content does not match"
+        echo "- Expected: ${content}"
+        echo "- Got: ${sourcecontent}"
+    fi
+}
+
+
 test_name="Ignition With No Storage"
 tmpfile=$(mktemp)
 ./filetranspile -i test/ignition-no-storage.json -f test/fakeroot > ${tmpfile}
@@ -84,6 +111,16 @@ tmpfile=$(mktemp)
 ./filetranspile -i test/ignition.json -f test/fakeroot > ${tmpfile}
 test_expected_files "${tmpfile}" "${test_name}"
 test_expected_keys "${tmpfile}" "${test_name}"
+
+# See https://github.com/ashcrow/filetranspiler/pull/29
+test_name="Ignition Overwrite With Fakeroot File"
+tmpfile=$(mktemp)
+./filetranspile -i test/ignition-overwrite-with-fakeroot-file.json -f test/fakeroot > ${tmpfile}
+test_expected_files "${tmpfile}" "${test_name}"
+test_expected_keys "${tmpfile}" "${test_name}"
+# We should still have the fakeroot one and not the one in our original ignition
+test_expected_contents "${tmpfile}" "/etc/resolve.conf" "data:{{mimetype}};base64,c2VhcmNoIDEyNy4wLjAuMQpuYW1lc2VydmVyIDEyNy4wLjAuMQo=" "${test_name}"
+
 
 if [[ $FAILURES -ge 1 ]]; then
     echo "${FAILURES} failures detected"
