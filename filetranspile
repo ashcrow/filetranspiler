@@ -41,8 +41,10 @@ class IgnitionSpec(abc.ABC):
         self.ignition_cfg = ignition_cfg
         self.fake_root = cli_args.fake_root
         self.dereference_symlinks = cli_args.dereference_symlinks
-        self.mimetype = magic.open(magic.MAGIC_MIME)
+        self.mimetype = magic.open(magic.MAGIC_MIME_TYPE)
         self.mimetype.load()
+        self.mime_encoding = magic.open(magic.MAGIC_MIME_ENCODING)
+        self.mime_encoding.load()
 
     def __del__(self):
         self.mimetype.close()
@@ -72,12 +74,14 @@ class IgnitionSpec(abc.ABC):
         :returns: Encoded file_contents
         :rtype: str
         """
-        header = ''.join(self.mimetype.file(file_path).split(' '))
         with open(file_path, 'rb') as file_obj:
             contents_base64 = base64.b64encode(
                 file_obj.read())
-            file_contents = 'data:{};base64,{}'.format(
-                header, contents_base64.decode('utf8'))
+            file_contents = 'data:{};charset={};base64,{}'.format(
+                self.mimetype.file(file_path),
+                self.mime_encoding.file(file_path),
+                contents_base64.decode('utf8')
+            )
             return file_contents
 
     @abc.abstractmethod
