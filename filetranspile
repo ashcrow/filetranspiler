@@ -48,6 +48,7 @@ class IgnitionSpec(abc.ABC):
 
     def __del__(self):
         self.mimetype.close()
+        self.mime_encoding.close()
 
     @abc.abstractmethod
     def file_to_ignition(self, file_path, file_contents, mode):
