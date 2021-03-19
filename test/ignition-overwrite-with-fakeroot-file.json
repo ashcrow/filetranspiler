@@ -2,7 +2,7 @@
   "ignition": { "version": "2.3.0" },
   "storage": {
     "files": [{
-      "path": "/foo/bar",
+      "path": "/var/foo/bar",
       "filesystem": "root",
       "mode": 420,
       "contents": { "source": "data:,example%20file%0A" }
