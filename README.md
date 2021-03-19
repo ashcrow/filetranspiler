@@ -6,8 +6,9 @@ See also [fcct](https://github.com/coreos/fcct).
 ## Building
 
 ### Container Image
+Requires `podman`
 ```
-$ podman build . -t filetranspiler:latest
+$ make container
 ```
 
 ## Running
