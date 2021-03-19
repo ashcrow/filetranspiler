@@ -10,8 +10,9 @@ It's recommended to use a released version of filetranspiler. See [releases](htt
 ## Building
 
 ### Container Image
+Requires `podman`
 ```
-$ podman build . -t filetranspiler:latest
+$ make container
 ```
 
 ## Running
