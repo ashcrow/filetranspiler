@@ -3,6 +3,10 @@ Creates an [Ignition](https://github.com/coreos/ignition) JSON file from a fake 
 
 See also [fcct](https://github.com/coreos/fcct).
 
+## Getting filetranspiler
+
+It's recommended to use a released version of filetranspiler. See [releases](https://github.com/ashcrow/filetranspiler/releases) page for the latest releases.
+
 ## Building
 
 ### Container Image
