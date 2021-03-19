@@ -27,29 +27,30 @@ These items are required when running outside of the container.
 - file-magic
 
 ```
-./filetranspile -i ignition.json -f fake-root
+./filetranspile -i ignition.json -f fakeroot
 ```
 
 ### Container Image
 **Note**: When using the container don't forget to mount the host directory that houses your ignition
 file and fake root in to the container!
 ```
-$ podman run --rm -ti --volume `pwd`:/srv:z localhost/filetranspiler:latest -i ignition.json -f fake-root
+$ podman run --rm -ti --volume `pwd`:/srv:z localhost/filetranspiler:latest -i ignition.json -f fakeroot
 ```
 
 ## Example
 ```
-$ tree fake-root
-fake-root
+$ tree fakeroot
+fakeroot/
 └── etc
     ├── hostname
+    ├── hostname.link -> hostname
     ├── resolve.conf
     └── sysconfig
         └── network-scripts
             ├── ifcfg-blah
             └── ifcfg-fake
 
-3 directories, 4 files
+3 directories, 5 files
 $ ./filetranspile --help
 usage: filetranspile [-h] [-i IGNITION] -f FAKE_ROOT [-o OUTPUT] [-p]
                      [--dereference-symlinks] [--format {json,yaml}]
@@ -76,19 +77,70 @@ $ cat ignition.json
   "ignition": { "version": "2.3.0" },
   "storage": {
     "files": [{
-      "path": "/foo/bar",
+      "path": "/var/foo/bar",
       "filesystem": "root",
       "mode": 420,
       "contents": { "source": "data:,example%20file%0A" }
-    },
-    {
-        "path": "/etc/sysconfig/network-scripts/iftest",
-        "filesystem": "root",
-        "mode": 420,
-        "contents": { "source": "data:,example%20file%0A" }
     }]
   }
 }
-$ ./filetranspile -i ignition.json -f fake-root
-{"ignition": {"version": "2.3.0"}, "storage": {"files": [{"path": "/foo/bar", "filesystem": "root", "mode": 420, "contents": {"source": "data:,example%20file%0A"}}, {"path": "/etc/hostname", "filesystem": "root", "mode": 384, "contents": {"source": "data:text/plain;charset=us-ascii;base64,c29tZXRoaW5nCg=="}}, {"path": "/etc/resolve.conf", "filesystem": "root", "mode": 436, "contents": {"source": "data:text/plain;charset=us-ascii;base64,c2VhcmNoIDEyNy4wLjAuMQpuYW1lc2VydmVyIDEyNy4wLjAuMQo="}}, {"path": "/etc/sysconfig/network-scripts/ifcfg-fake", "filesystem": "root", "mode": 436, "contents": {"source": "data:text/plain;charset=us-ascii;base64,ZmFrZQo="}}, {"path": "/etc/sysconfig/network-scripts/ifcfg-blah", "filesystem": "root", "mode": 436, "contents": {"source": "data:text/plain;charset=us-ascii;base64,YmxhaCBibGFoIGJsYWgKMTIzNDU2Nzg5MApibGFoIGJsYWggYmxhaAo="}}], "links": [{"path": "/etc/hostname.link", "filesystem": "root", "target": "hostname", "hard": false}]}}
+
+$ ./filetranspile -i test/ignition.json -f test/fakeroot -p
+{
+    "ignition": {
+        "version": "2.3.0"
+    },
+    "storage": {
+        "files": [
+            {
+                "contents": {
+                    "source": "data:,example%20file%0A"
+                },
+                "filesystem": "root",
+                "mode": 420,
+                "path": "/var/foo/bar"
+            },
+            {
+                "contents": {
+                    "source": "data:text/plain;charset=us-ascii;base64,c29tZXRoaW5nCg=="
+                },
+                "filesystem": "root",
+                "mode": 436,
+                "path": "/etc/hostname"
+            },
+            {
+                "contents": {
+                    "source": "data:text/plain;charset=us-ascii;base64,c2VhcmNoIDEyNy4wLjAuMQpuYW1lc2VydmVyIDEyNy4wLjAuMQo="
+                },
+                "filesystem": "root",
+                "mode": 436,
+                "path": "/etc/resolve.conf"
+            },
+            {
+                "contents": {
+                    "source": "data:text/plain;charset=us-ascii;base64,YmxhaCBibGFoIGJsYWgKMTIzNDU2Nzg5MApibGFoIGJsYWggYmxhaAo="
+                },
+                "filesystem": "root",
+                "mode": 436,
+                "path": "/etc/sysconfig/network-scripts/ifcfg-blah"
+            },
+            {
+                "contents": {
+                    "source": "data:text/plain;charset=us-ascii;base64,ZmFrZQo="
+                },
+                "filesystem": "root",
+                "mode": 436,
+                "path": "/etc/sysconfig/network-scripts/ifcfg-fake"
+            }
+        ],
+        "links": [
+            {
+                "filesystem": "root",
+                "hard": false,
+                "path": "/etc/hostname.link",
+                "target": "hostname"
+            }
+        ]
+    }
+}
 ```
